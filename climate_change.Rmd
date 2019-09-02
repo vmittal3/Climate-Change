@@ -1,0 +1,227 @@
+---
+title: "DSc Assignment 1 Report"
+author: "Vaibhav Mittal"
+date: "31 August 2019"
+output: pdf_document
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Climate Change and its Links to Socio-Economic Factors
+
+A staggering consensus of 97% climate experts suggests that our global climate is changing^[1](https://skepticalscience.com/argument.php)^ and humans are the primary force behind this^[2](https://skepticalscience.com/climate-change-little-ice-age-medieval-warm-period.htm)^. A lot of different studies (passing the rigorous tests of science) are saying this is largely because of $CO_2$ emissions^[2](https://skepticalscience.com/climate-change-little-ice-age-medieval-warm-period.htm)^.  
+
+A lot of people might say something (or might tweet something) to challenge this. Very unfortunately, such people might also occupy positions of great power. Let's check some factual data and make an informed decision regarding this.  
+
+## But, wait. Why is climate change important?  
+
+Climate change has proved to be the doom of several civilisations at their very peak. This can very well be seen in the following two cases.  
+
+**1. The Indus Valley Civilisation** - Historians are in no doubt that the most harrowing blow to the civilisation well ahead of its time was the drought that carried on for nearly 200 years^[3](https://www.nature.com/news/two-hundred-year-drought-doomed-indus-valley-civilization-1.14800)^. Not only this glorious civilisation, the entire Late Bronze Age is said to be destroyed because of the reasons that cascaded out of the climate change factor^[4](https://en.wikipedia.org/wiki/Bronze_Age_collapse)^.
+
+**2. Creation of the Independent State of Bangladesh** - The liberation of (the then called) East Pakistan in 1971 into the creation of the State of Bangladesh has one crucial trigger. In the 1970s, several cyclones affected the areas near to the Indian Ocean. The Bhola Cyclone of 1970^[5](https://en.wikipedia.org/wiki/1970_Bhola_cyclone)^ was the deadliest of them and led to the rise of regional parties angered by the dry response of the national government for relief^[6](https://en.wikipedia.org/wiki/Bangladesh_Liberation_War)^. Surely, a lot of world leaders won't like the idea of losing their land.  
+
+Okay, let's do some science now.
+
+## Climate Data Science
+
+First, we need some libraries.  
+```{r results='hold'}
+library(ggplot2)
+library(ggthemes)
+library(reshape2)
+library(corrplot)
+
+```
+
+Great, let's take a look at the data!
+
+```{r}
+# read, preprocess, and plot the global CO2 data file from NASA
+co2 = read.csv('co2_gr_mlo.txt', sep = " ")
+co2 = subset(co2, select = c(X.4))
+plot(row.names(co2), co2$X.4, type = 'l', xlab = 'Year',
+     ylab = expression('Annual Increase in CO'[2]*' in metric tonnes)'), 
+     main = 'Gradual Increase in Atmospheric Carbon Dioxide through the Years')
+grid(NULL, NULL)
+
+```
+
+What you see here is the data from NASA's NOAA^[7](ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_annmean_mlo.txt)^. It is more than evident from this line plot that our emissions have an upward trend with 1998 proving to be an awful year. 
+
+> **Key Insight 1 - The global atmospheric carbon dioxide levels are showing a strong upward trend.**  
+
+If you think India's developing status might relieve it from such an unfortunate trend, then take a look at this data (taken from ^[8](http://api.worldbank.org/v2/en/indicator/EN.ATM.CO2E.PC?downloadformat=csv)^).  
+
+```{r}
+co2_med = read.csv('API_EN.ATM.CO2E.PC_DS2_en_csv_v2_103958.csv', skip = 4)
+india = co2_med[108,]
+india = data.frame(t(subset(india, 
+                            select = -c(Country.Code, Indicator.Name, 
+                                        Indicator.Code, Country.Name))))
+india = data.frame(india[1:55,])
+row.names(india) = rep(1961:2015)
+plot(y = india$india.1.55..., x = row.names(india), type = 'l', xlab = 'Years', 
+     ylab = expression('Atmospheric CO'[2]* ' level in ppm'),
+     main = expression('The Rising CO'[2]* ' levels in India'))
+grid(NULL,NULL)
+
+```
+
+The same story plays out in the Indian setting too! 
+
+> **Key Insight 2 - Even developing and agrarian economies like India show an exponential increase in atmospheric carbon dioxide levels.**  
+
+Still not convinced? Here is NASA's GISS data of historical annual mean temperatures globally^[9](https://data.giss.nasa.gov/gistemp/tabledata_v3/GLB.Ts+dSST.csv)^. This dataset also contains a climate statistic called the 'temperature anomaly'.  
+
+```{r}
+gtemp = read.csv('GLB.Ts+dSST.csv', skip = 1)
+colnames(gtemp)[14] = "Jan-Dec"
+colnames(gtemp)[15] = "Dec-Nov"
+colnames(gtemp)[16] = "Dec-Feb"
+colnames(gtemp)[17] = "Mar-May"
+colnames(gtemp)[18] = "Jan-Jun"
+colnames(gtemp)[19] = "Sep-Nov"
+pairs(gtemp[,14:19], col = 'red')
+
+```
+
+The plot that you see here is called a 'pair plot', and the values it is plotting here is the anomaly mentioned above. This anomaly is calculated as the difference in mean value per month per season. A positive anomaly suggests that the year was warmer than baseline^[10](https://towardsdatascience.com/time-series-analysis-and-climate-change-7bb4371021e)^.  
+
+What we can observe from this plot is that some subplots are first a disorganised mass of points (or in some cases, seen pointing downwards too). And then, some values later, they're showing an upward trend. This tipping point is seen somewhere in the 1950s and 1960s mostly. 
+
+Of course, you expect some months to be generally warmer than others like January to June months would have a value higher than September to November. Thus we some subplots having an entirely upward trend.  
+
+> **Key Insight 3 - Not only our carbon dioxide emissions are increasing, but the earth is recording warmer and warmer years since the late 1950s and early 1960s.**  
+
+```{r}
+tree = read.csv("district_forest_cover.csv")
+main_tree = tree[tree$District == 'Total',]
+main_tree$Percentage.to.Geographical.Area =
+  as.numeric(as.character(main_tree$Percentage.to.Geographical.Area))
+main_tree$Percentage.to.Geographical.Area[4] = 7.10 
+# the value given for Bihar is 723%. This has been recalculated.
+main_tree = main_tree[order
+                      (main_tree$Percentage.to.Geographical.Area),]
+low_tree = head(main_tree); high_tree = tail(main_tree)
+
+ggplot(low_tree) + geom_col(aes(low_tree$State.UTs, 
+                                y = low_tree$Percentage.to.Geographical.Area)) + 
+  geom_text(aes(x = low_tree$State.UTs, 
+                y = low_tree$Percentage.to.Geographical.Area + 0.4, 
+                label = round(low_tree$Percentage.to.Geographical.Area, 2))) +
+  xlab("States/UTs") + ylab("Forest Coverage in Percentage to Geographical Area") +
+  theme_economist() + ggtitle("States with Lowest Forest Coverage")
+```
+
+We already know how vital plants and trees are to the ecosystem. The bar plot above shows the top 5 Indian states with the least percentage of forest coverage per their geographical areas. The plot below shows the ones with the highest percentages. The data is taken from Open Government Data Platform, India^[11](https://data.gov.in/resources/state-and-ut-wise-total-recorded-forest-area-and-forest-cover-india-state-forest-report)^.
+
+```{r}
+ggplot(high_tree) + geom_col(aes(high_tree$State.UTs, 
+                                 y = high_tree$Percentage.to.Geographical.Area)) + 
+  geom_text(aes(x = high_tree$State.UTs, 
+                y = high_tree$Percentage.to.Geographical.Area + 3, label =
+                  round(high_tree$Percentage.to.Geographical.Area, 2))) +
+  xlab("States/UTs") + ylab("Forest Coverage in Percentage to Geographical Area") +
+  theme_economist() + ggtitle("States with Highest Forest Coverage")
+```
+
+Notice any patterns? The states with the highest forest coverage are from the North East India (with the exception of Andaman and Nicobar Islands). The states with lowest forest coverage are the so-called Bimaru states (_transliteration: sickly states_; consisting of Bihar, Madhya Pradesh, Rajasthan, and Uttar Pradesh). We see one exception here too - the Union Territory of Daman & Diu. But it can be discarded from the analysis since it itself has a small geographic area.  
+
+The 2008 Bonn report by TEEB (The Economics of Ecosystems and Biodiversity) says that higher the deforestation rate, higher the financial losses to the government and the people^[12](http://news.bbc.co.uk/2/hi/science/nature/7424535.stm)^. Is there any link between forest cover and the financial and socio-economic factors? Does this imply that climate change can leave you poorer?  
+
+```{r}
+socio = read.csv("ranksallstatesr1_1.csv")
+socio = subset(socio, select = -c(Sr..No, Source, Periodicity..Latest.available.data))
+colnames(socio)[2] = "Andhra Pradesh"
+colnames(socio)[3] = "Arunachal Pradesh"
+colnames(socio)[11] = "Himachal Pradesh"
+colnames(socio)[12] = "Jammu and Kashmir"
+colnames(socio)[16] = "Madhya Pradesh"
+colnames(socio)[26] = "Tamil Nadu"
+colnames(socio)[28] = "Uttar Pradesh"
+colnames(socio)[30] = "West Bengal"
+row.names(socio) = socio[,1]
+socio = socio[,-1]
+socio = data.frame(t(socio))
+socio2= data.matrix(socio)
+socio2[is.na(socio2)] = 0
+corrplot(cor(socio2), tl.cex = 0.5, type = 'upper')
+```
+
+This correlation plot shows an upper matrix which compares the different socio-economic factors of India with each other (**ranked** data from NITI Aayog^[13](https://data.gov.in/catalog/major-socio-economic-indicators-states-india?filters%5Bfield_catalog_reference%5D=315601&format=json&offset=0&limit=6&sort%5Bcreated%5D=desc)^). A full sized image with clear captions is available separately. Here, forest cover percentage is the very last column. We see strong negative rank correlations with literacy rate, sex ratio, mortality rate and access to clean drinking water. Once again, this is something where the Bimaru states rank very low. We see a strong positive rank correlation with primary school enrollment, but to offset it, there is also a positive correlation with school dropout rate!  
+
+> **Key Insight 4 - We already know climate change has financial implications, but forest coverage is also linked with such financial and socio-economic factors.**  
+
+## What could be the reasons behind this?
+
+Is it because of the fact that those states aren't paying attention to all such measures or does it point towards the 2008 TEEB report that climate change could affect a state financially? The Ministry of Statistics and Programme Implementation, Government of India keeps a track of the GDP per capita of each Indian state^[14](http://mospi.nic.in/sites/default/files/press_releases_statements/State_Series_1mar19.xls)^. The Bimaru states rank lowly here as well - with Bihar lying at the very bottom of the list --- its GDP per capita being comparable to the African nation of Uganda. Uttar Pradesh lying at the second last --- its GDP per capita being comparable to another African nation - Guinea.   
+
+```{r}
+budget = read.csv("per capita resource allocation.csv")
+
+# compare Bihar's data. 
+initial = data.frame(cbind(budget$States.fiscal.year, budget$Bihar, budget$All.India))
+initial = data.frame(initial[,-1])
+initial = data.frame(initial[-11,])
+x = rep(1:10)
+y1 = budget$Bihar[1:10]
+y2 = budget$All.India[1:10]
+initial = data.frame(x, y1, y2)
+initial = melt(data = initial, id.vars = 'x')
+ggplot(data = initial, aes(x = x, y = value, colour = variable)) + geom_line() +
+  xlab("Number of Five-Year Plan") + ylab("Per Capita Resource Allocation (in Rupees)") +
+  ggtitle("Central Govt's Funding to Bihar as per the Five-Year Plans") +
+  scale_color_manual(labels = c("Bihar", "All India"), values = c("blue", "red"))
+```
+
+Ever since independence, the Government of India has been making ambitious plans for the growth of several sectors. These have been manifested as the Five-Year Plans (FYP). Scholars have argued over the uneven funding the center provides to the states for the completion of the goals in the FYP^[15](https://doi.org/10.1080/21681376.2014.943804)^. The plot above shows the huge discrepancy in what Bihar received as compared to the rest of the nation. The plot might say that the first 4 FYPs were advantageous for Bihar since the lines seem quite close. That is only due to the scale of the money growth doled out by the center in recent FYPs. Here is a close up of that area.  
+
+```{r}
+x = rep(1:4)
+y1 = budget$Bihar[1:4]
+y2 = budget$All.India[1:4]
+initial = data.frame(x, y1, y2)
+initial = melt(data = initial, id.vars = 'x')
+ggplot(data = initial, aes(x = x, y = value, colour = variable)) + geom_line() +
+  xlab("Number of Five-Year Plan") + ylab("Per Capita Resource Allocation (in Rupees)") +
+  ggtitle("Central Govt's Funding to Bihar as per the Five-Year Plans") +
+  scale_color_manual(labels = c("Bihar", "All India"), values = c("blue", "red"))
+```
+
+> **Key Insight 5 - Governmental actions can greatly determine the fate of the climate and the fate of 
+its people.**  
+
+## Are there any solutions?
+
+This wide discrepancy might actually give us a solution to the problem of tackling climate change. It requires not only the concerted effort of the people to look for sustainable alternatives, but the governments also have to give a financial shot in the arm^[16](https://www.indiatoday.in/india/story/climate-change-india-pitches-for-financial-support-by-developed-nations-1594093-2019-09-01)^. I hope the climate change deniers who happen to be in positions of power are seeing this.  
+
+## Summary and Conclusions
+
+The analysis done here introduces climate change and why is it important. There are many people who still deny that human activities are degrading the climate. This analysis tries to challenge such uninformed claims and also wishes to unearth some novel links to climate change --- done using information from reliable sources.  
+
+In this analysis, we saw that the atmospheric carbon dioxide levels are increasing globally as well as in India. We also saw that the earth in getting warmer and warmer each passing year. The 2008 TEEB report presented to the heads of G8 countries in Bonn suggests that climate change affects a state financially too. In this analysis, it was evident that those states with lower forest cover show a high correlation to score low in terms of socio-economic indicators. We saw such states of affairs could be due to governmental inaction. Fortunately, this also suggests that if the governments start taking action -- financial or in terms of manpower -- there is still hope.  
+
+![Taken with permission from [happylettering18](https://www.instagram.com/happylettering18/) ](C:\\Users\\Vaibhav\\Desktop\\College\\Sem3\\DSc\\Assign1\\Visualisations\\handLettering.jpg)
+
+## References
+1. SkepticalScience. "Arguments from the Global Warming Skeptics and what the science really says". Accessed September 2, 2019. https://skepticalscience.com/argument.php
+2. SkepticalScience. "What does past climate change tell us about global warming?". Accessed September 2, 2019. https://skepticalscience.com/climate-change-little-ice-age-medieval-warm-period.htm
+3. Marris, Emma. "Two-hundred-year drought doomed Indus Valley Civilization". Accessed September 2, 2019. https://www.nature.com/news/two-hundred-year-drought-doomed-indus-valley-civilization-1.14800
+4. Wikipedia. "Late Bronze Age Collapse". Accessed September 2, 2019.  https://en.wikipedia.org/wiki/Bronze_Age_collapse
+5. Wikipedia. "1970 Bhola Cyclone". Accessed September 2, 2019.  https://en.wikipedia.org/wiki/1970_Bhola_cyclone
+6. Wikipedia. " Bangladesh Liberation War". Accessed September 2, 2019.  https://en.wikipedia.org/wiki/Bangladesh_Liberation_War
+7. National Aeronautics and Space Administration, USA. "Global CO2 Trends". Accessed September 2, 2019.  ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_annmean_mlo.txt
+8. The World Bank. "Country-wise Co2 Emissions". Accessed September 2, 2019.  http://api.worldbank.org/v2/en/indicator/EN.ATM.CO2E.PC?downloadformat=csv
+9. National Aeronautics and Space Administration, USA. "Moana Lua Mean Temperatures Annually". Accessed September 2, 2019. https://data.giss.nasa.gov/gistemp/tabledata_v3/GLB.Ts+dSST.csv
+10. Turner, Peter. "Time Series Analysis and Climate Change". Accessed September 2, 2019.  https://towardsdatascience.com/time-series-analysis-and-climate-change-7bb4371021e
+11. Ministry of Environment, Forest and Climate Change. "State and UT wise total recorded forest area and forest cover as per India State of Forest Report, 2015". Accessed September 2, 2019.  https://data.gov.in/resources/state-and-ut-wise-total-recorded-forest-area-and-forest-cover-india-state-forest-report
+12. Black, Richard. "Nature loss 'to hurt global poor'". Accessed September 2, 2019.  http://news.bbc.co.uk/2/hi/science/nature/7424535.stm
+13. NITI Aayog. "Major Socio-economic Indicators of States of India". Accessed September 2, 2019.  https://data.gov.in/catalog/major-socio-economic-indicators-states-india?filters%5Bfield_catalog_reference%5D=315601&format=json&offset=0&limit=6&sort%5Bcreated%5D=desc
+14. Ministry of Statistics and Programme Implementation. "MOSPI Gross State Domestic Product". Accessed September 2, 2019. http://mospi.nic.in/sites/default/files/press_releases_statements/State_Series_1mar19.xls
+15. Rasul, Golam, and Eklabya Sharma. "Understanding the poor economic performance of Bihar and Uttar Pradesh, India: A macro-perspective." Regional Studies, Regional Science 1, no. 1 (2014): 221-239.
+16. Press Trust of India. "Climate change: India pitches for financial support by developed nations". Accessed September 2, 2019. [https://www.indiatoday.in](https://www.indiatoday.in/india/story/climate-change-india-pitches-for-financial-support-by-developed-nations-1594093-2019-09-01)
+
